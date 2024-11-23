@@ -1,4 +1,4 @@
-package com.sriram9217.timetable.exception;
+package com.sriram9217.timetable.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -24,7 +24,10 @@ public class Student {
     @Column(name = "lastName")
     private String lastName;
 
-    @Column(name = "email", unique = true, nullabel = false)
+    @Column(name = "email", unique = true, nullable = false)
     private String email;
+
+    @OneToOne(mappedBy = "student", cascade = CascadeType.ALL)
+    private PasswordsHolder passwordsHolder;
 
 }
