@@ -14,6 +14,7 @@ import com.sriram9217.timetable.repo.PasswordsHolderRepo;
 import com.sriram9217.timetable.repo.StudentRepo;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -55,7 +56,7 @@ public class StudentService {
         );
     }
 
-    public Password getPasswordsById(Long id) {
+    public Password getPasswordById(Long id) {
         return passwordsHolderRepo.findById(id).orElseThrow(
                 () -> new StudentNotFoundException("Customer with Id " + id + " not found")
         );
@@ -67,12 +68,12 @@ public class StudentService {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Student not found");
         }
 
-        Password passwordsHolder = getPasswordsHolderById(student.getPasswordById().getId());
-        if (passwordsHolder == null) {
+        Password password = getPasswordById(student.getPassword().getId());
+        if (password == null) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Password holder not found");
         }
 
-        boolean isPasswordValid = encryptionService.validates(request.password(), passwordsHolder.getHashedPassword());
+        boolean isPasswordValid = encryptionService.validates(request.password(), password.getHashedPassword());
         if (!isPasswordValid) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Wrong password");
         }
@@ -80,6 +81,8 @@ public class StudentService {
         String token = jwtHelper.generateToken(student.getEmail());
         return ResponseEntity.ok(token);
     }
+
+
 
 
 
