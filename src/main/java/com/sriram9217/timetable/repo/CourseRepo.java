@@ -9,4 +9,5 @@ import java.util.Optional;
 
 public interface CourseRepo extends JpaRepository<Course, Long> {
     List<Course> findAllByOrderByIdAsc();
+    Optional<Course> findById(Long id);
 }

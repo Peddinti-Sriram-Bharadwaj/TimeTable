@@ -1,11 +1,17 @@
 package com.sriram9217.timetable.controller;
 
+import com.sriram9217.timetable.dto.CourseTimeSlotRequest;
 import com.sriram9217.timetable.dto.RegisterRequest;
+import com.sriram9217.timetable.dto.WeeklyTimeTableResponse;
 import com.sriram9217.timetable.entity.Course;
+import com.sriram9217.timetable.exception.CourseNotFoundException;
+import com.sriram9217.timetable.exception.StudentNotFoundException;
+import com.sriram9217.timetable.exception.TimeSlotNotFoundException;
 import com.sriram9217.timetable.helper.RequestInterceptor;
 import com.sriram9217.timetable.service.CourseService;
 import com.sriram9217.timetable.service.StudentService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,4 +49,37 @@ public class StudentController {
         List<Course> courses = courseService.getAll(); // Assuming getAll() retrieves all courses
         return ResponseEntity.ok(courses);
     }
+
+    @GetMapping("{id}/timetable")
+    public ResponseEntity<?> getWeeklyTimeTable(@PathVariable Long id, HttpServletRequest request, HttpServletResponse response) {
+        if (!requestInterceptor.validateToken(request, response)) {
+            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED).build();
+        }
+
+        return studentService.showtimeTable(id);
+    }
+
+    @PostMapping("{id}/register-course")
+    public ResponseEntity<?> registerCourseToTimeSlot(
+            @PathVariable Long id,
+            @RequestBody CourseTimeSlotRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        // Validate token
+        if (!requestInterceptor.validateToken(httpRequest, httpResponse)) {
+            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED).build();
+        }
+
+        try {
+            // Register the course to the time slot
+            studentService.registerCourseToTimeSlot(id, request);
+            return ResponseEntity.ok("Course registered to time slot successfully");
+        } catch (StudentNotFoundException | CourseNotFoundException | TimeSlotNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        }
+    }
+
 }
