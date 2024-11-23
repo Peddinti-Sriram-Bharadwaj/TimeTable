@@ -13,4 +13,8 @@ public class EncryptionService {
         return passwordEncoder.encode(password);
     }
 
+    public boolean validates (String password, String encryptedPassword) {
+        return passwordEncoder.matches(password, encryptedPassword);
+    }
+
 }

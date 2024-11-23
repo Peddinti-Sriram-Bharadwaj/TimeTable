@@ -13,7 +13,7 @@ public class StudentMapper {
         return Student.builder()
                 .firstName(request.firstName())
                 .lastName(request.lastName())
-                .email(request.lastName())
+                .email(request.email())
                 .build();
     }
 
