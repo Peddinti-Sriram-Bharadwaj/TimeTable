@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 @Table(name = "passwordsHolder")
-public class PasswordsHolder {
+public class Password{
    @Id
    @GeneratedValue(strategy = GenerationType.AUTO)
    private long id;

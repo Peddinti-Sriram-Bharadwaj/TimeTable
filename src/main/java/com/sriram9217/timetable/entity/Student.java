@@ -28,6 +28,6 @@ public class Student {
     private String email;
 
     @OneToOne(mappedBy = "student", cascade = CascadeType.ALL)
-    private PasswordsHolder passwordsHolder;
+    private Password password;
 
 }
