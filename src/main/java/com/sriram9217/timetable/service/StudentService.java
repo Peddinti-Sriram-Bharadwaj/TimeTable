@@ -64,25 +64,33 @@ public class StudentService {
         );
     }
 
-    public ResponseEntity<?> login(LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(LoginRequest request) {
         Student student = getStudentByEmail(request.email());
         if (student == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Student not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         }
 
         Password password = getPasswordById(student.getPassword().getId());
         if (password == null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Password holder not found");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
 
         boolean isPasswordValid = encryptionService.validates(request.password(), password.getHashedPassword());
         if (!isPasswordValid) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Wrong password");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
         }
 
+        // Generate token
         String token = jwtHelper.generateToken(student.getEmail());
-        return ResponseEntity.ok(token);
+
+        // Create response object with token and student ID
+        LoginResponse loginResponse = new LoginResponse(token, student.getId());
+
+        // Return response
+        return ResponseEntity.ok(loginResponse);
     }
+
+
 
     public ResponseEntity<?> showTimeTable(Long studentId) {
         // Fetch the student by ID
