@@ -18,15 +18,23 @@ import java.util.Set;
 public class Course {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "course_name", nullable = false)
     private String courseName;
 
-    // Other course properties can go here
 
     @ManyToMany(mappedBy = "courses")
     @JsonIgnore
     private Set<Student> students; // Back reference to students enrolled in this course
+
+    @Column(name = "faculty")
+    private String faculty;
+
+    @Column(name = "room_no")
+    private String roomNo;
+
+    @Column
+    private String Specialization;
 }
