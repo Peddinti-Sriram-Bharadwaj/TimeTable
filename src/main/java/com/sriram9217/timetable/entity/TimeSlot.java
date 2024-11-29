@@ -1,11 +1,13 @@
 package com.sriram9217.timetable.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 
 @Data
 @Entity
@@ -22,4 +24,8 @@ public class TimeSlot {
     private String dayOfWeek;
     private String startTime;
     private String endTime;
+
+    @ManyToMany(mappedBy = "timeSlots")
+    @JsonIgnore
+    private List<Course> courses; // Back reference to courses having this timeslot
 }

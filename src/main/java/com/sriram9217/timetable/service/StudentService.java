@@ -6,6 +6,7 @@ import com.sriram9217.timetable.entity.*;
 import com.sriram9217.timetable.exception.CourseNotFoundException;
 import com.sriram9217.timetable.exception.StudentNotFoundException;
 import com.sriram9217.timetable.exception.TimeSlotNotFoundException;
+import com.sriram9217.timetable.dto.CourseDetailsResponse;
 import com.sriram9217.timetable.helper.EncryptionService;
 import com.sriram9217.timetable.helper.JWtHelper;
 import com.sriram9217.timetable.mapper.StudentMapper;
@@ -19,8 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.print.DocFlavor;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 public class StudentService {
     private final StudentRepo studentRepo;
     private final PasswordsHolderRepo passwordsHolderRepo;
-    private final TimeTableRepo timeTableRepo;
     private final TimeSlotRepo timeSlotRepo;
     private final StudentMapper studentMapper;
     private final PasswordEncoder passwordEncoder;
@@ -85,43 +84,61 @@ public class StudentService {
         return ResponseEntity.ok(token);
     }
 
-    public ResponseEntity<?> showtimeTable(Long id) {
+    public ResponseEntity<?> showTimeTable(Long studentId) {
         // Fetch the student by ID
-        Student student = studentRepo.findById(id).orElseThrow(
-                () -> new StudentNotFoundException("Student with ID " + id + " not found")
+        Student student = studentRepo.findById(studentId).orElseThrow(
+                () -> new StudentNotFoundException("Student with ID " + studentId + " not found")
         );
 
-        // Fetch timetable entries for the student
-        List<TimeTableEntry> timeTableEntries = timeTableRepo.findByStudentId(id);
-        if (timeTableEntries.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Timetable not found");
+        // Fetch all courses the student is enrolled in
+        Set<Course> enrolledCourses = student.getCourses();
+        if (enrolledCourses.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Student is not enrolled in any courses");
         }
 
-        // Map timetable entries to WeeklyTimeTableResponse
-        WeeklyTimeTableResponse weeklyTimeTable = new WeeklyTimeTableResponse(
+        // Initialize a list to hold the DayTimeTable data for the response
+        Map<String, List<WeeklyTimeTableResponse.TimeSlotResponse>> groupedByDay = new TreeMap<>(); // TreeMap to keep days in order (Mon, Tue, Wed, etc.)
+
+        // Group courses by the day of the week and time slot information
+        for (Course course : enrolledCourses) {
+            for (TimeSlot timeSlot : course.getTimeSlots()) {
+                String dayOfWeek = timeSlot.getDayOfWeek(); // Assume dayOfWeek is in a standard format like "Monday", "Tuesday", etc.
+                WeeklyTimeTableResponse.TimeSlotResponse timeSlotResponse = new WeeklyTimeTableResponse.TimeSlotResponse(
+                        timeSlot.getStartTime(),
+                        timeSlot.getEndTime(),
+                        course.getCourseName() // Get the course name for each time slot
+                );
+
+                // Add the time slot to the grouped map, by day of the week
+                groupedByDay
+                        .computeIfAbsent(dayOfWeek, k -> new ArrayList<>()) // Initialize list if absent
+                        .add(timeSlotResponse);
+            }
+        }
+
+        // Prepare the DayTimeTable list from the grouped data
+        List<WeeklyTimeTableResponse.DayTimeTable> weeklyTimeTable = new ArrayList<>();
+        for (Map.Entry<String, List<WeeklyTimeTableResponse.TimeSlotResponse>> entry : groupedByDay.entrySet()) {
+            WeeklyTimeTableResponse.DayTimeTable dayTimeTable = new WeeklyTimeTableResponse.DayTimeTable(
+                    entry.getKey(), // Day of the week (e.g., "Monday")
+                    entry.getValue() // List of time slots for that day
+            );
+            weeklyTimeTable.add(dayTimeTable);
+        }
+
+        // Create the final response object
+        WeeklyTimeTableResponse response = new WeeklyTimeTableResponse(
                 student.getId(),
-                timeTableEntries.stream()
-                        .collect(Collectors.groupingBy(
-                                entry -> entry.getTimeSlot().getDayOfWeek(), // Group by day of the week
-                                Collectors.mapping(
-                                        entry -> new WeeklyTimeTableResponse.TimeSlotResponse(
-                                                entry.getTimeSlot().getStartTime(),
-                                                entry.getTimeSlot().getEndTime(),
-                                                entry.getCourse().getCourseName() // Get the course name from the entry
-                                        ),
-                                        Collectors.toList()
-                                )
-                        ))
-                        .entrySet()
-                        .stream()
-                        .map(e -> new WeeklyTimeTableResponse.DayTimeTable(e.getKey(), e.getValue()))
-                        .toList()
+                weeklyTimeTable
         );
 
-        return ResponseEntity.ok(weeklyTimeTable);
+        return ResponseEntity.ok(response);
     }
 
-    public void registerCourseToTimeSlot(Long studentId, CourseTimeSlotRequest request) {
+
+
+
+    public void registerCourseToTimeSlot(Long studentId, CourseRegisterRequest request) {
         // Fetch the student by ID
         Student student = studentRepo.findById(studentId).orElseThrow(
                 () -> new StudentNotFoundException("Student with ID " + studentId + " not found")
@@ -132,28 +149,44 @@ public class StudentService {
                 () -> new CourseNotFoundException("Course with ID " + request.courseId() + " not found")
         );
 
-        // Fetch the time slot by ID
-        // Fetch the time slot by ID
-        TimeSlot timeSlot = timeSlotRepo.findById(request.timeSlotId()).orElseThrow(
-                () -> new TimeSlotNotFoundException()
-        );
-
-
-        // Check if the student already has a course registered in the same time slot
-        Optional<TimeTableEntry> existingEntry = timeTableRepo.findByStudentIdAndTimeSlotId(studentId, request.timeSlotId());
-        if (existingEntry.isPresent()) {
-            throw new IllegalArgumentException("Student already has a course registered in this time slot");
+        // Check if the course has available time slots
+        List<TimeSlot> availableTimeSlots = course.getTimeSlots();
+        if (availableTimeSlots.isEmpty()) {
+            throw new IllegalArgumentException("The course has no time slots assigned");
         }
 
-        // Create and save a new timetable entry
-        TimeTableEntry newEntry = TimeTableEntry.builder()
-                .student(student)
-                .course(course)
-                .timeSlot(timeSlot)
-                .build();
+        // Add the course to the student's list of enrolled courses
+        student.getCourses().add(course); // Assuming `getCourses()` returns a Set<Course>
 
-        timeTableRepo.save(newEntry);
+        // Register the student for all time slots assigned to the course
+        studentRepo.save(student);
     }
+
+    public ResponseEntity<?> getRegisteredCourses(Long studentId) {
+        // Fetch the student by ID
+        Student student = studentRepo.findById(studentId).orElseThrow(
+                () -> new StudentNotFoundException("Student with ID " + studentId + " not found")
+        );
+
+        // Fetch the courses the student is enrolled in
+        Set<Course> enrolledCourses = student.getCourses();
+        if (enrolledCourses.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Student is not registered for any courses");
+        }
+
+        // Map the enrolled courses to CourseDetailsResponse DTO
+        List<CourseDetailsResponse> courseDetailsResponses = enrolledCourses.stream()
+                .map(course -> new CourseDetailsResponse(
+                        course.getCourseName(),
+                        course.getFaculty(),
+                        course.getRoomNo(),
+                        course.getSpecialization()
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(courseDetailsResponses);
+    }
+
 
 
 

@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 
 import java.util.Set;
 
+import java.util.Objects;
+
 @Data
 @Entity
 @Builder
@@ -18,7 +20,7 @@ import java.util.Set;
 public class Student {
 
     @Id
-    @GeneratedValue(strategy  = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
     @Column(name = "firstName", nullable = false)
@@ -41,5 +43,20 @@ public class Student {
             joinColumns = @JoinColumn(name = "student_id"),
             inverseJoinColumns = @JoinColumn(name = "course_id")
     )
-    private Set<Course> courses; // Set of courses the student is enrolled in
+    private Set<Course> courses;
+
+    // Override equals and hashCode to avoid circular references
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Student student = (Student) o;
+        return Objects.equals(id, student.id); // Compare only by id
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id); // Use only the id for hashCode
+    }
 }
+

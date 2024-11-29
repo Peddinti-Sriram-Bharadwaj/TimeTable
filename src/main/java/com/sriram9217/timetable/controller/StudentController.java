@@ -1,6 +1,6 @@
 package com.sriram9217.timetable.controller;
 
-import com.sriram9217.timetable.dto.CourseTimeSlotRequest;
+import com.sriram9217.timetable.dto.CourseRegisterRequest;
 import com.sriram9217.timetable.dto.RegisterRequest;
 import com.sriram9217.timetable.dto.WeeklyTimeTableResponse;
 import com.sriram9217.timetable.entity.Course;
@@ -56,13 +56,13 @@ public class StudentController {
             return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED).build();
         }
 
-        return studentService.showtimeTable(id);
+        return studentService.showTimeTable(id);
     }
 
     @PostMapping("{id}/register-course")
-    public ResponseEntity<?> registerCourseToTimeSlot(
+    public ResponseEntity<?> registerCourse(
             @PathVariable Long id,
-            @RequestBody CourseTimeSlotRequest request,
+            @RequestBody CourseRegisterRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
 
@@ -80,6 +80,15 @@ public class StudentController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
         }
+    }
+
+    @GetMapping("{id}/registered-courses")
+    public ResponseEntity<?> getRegisteredCourses(@PathVariable Long id, HttpServletRequest request, HttpServletResponse response) {
+        if (!requestInterceptor.validateToken(request, response)) {
+            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED).build();
+        }
+
+        return studentService.getRegisteredCourses(id);
     }
 
 }
